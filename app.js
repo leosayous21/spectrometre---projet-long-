@@ -6,6 +6,9 @@ var morgan = require('morgan'); // Charge le middleware de logging
 var server = http.createServer(app);
 var io = require('socket.io').listen(server);  //pass a http.Server instance
 var fs = require("fs");
+//librairie de communication série !
+var SerialPort = require("serialport").SerialPort;
+
 server.listen(8080);
 //server.listen(80);
 
@@ -142,10 +145,6 @@ io.on('connection', function (socket) {
 
 
 
-
-
-//Acquisition des donnees !
-var SerialPort = require("serialport").SerialPort;
 
 //var serial_chipkit = new SerialPort("/dev/tty.usbserial-AJV9IKME", {baudrate: 1152000}, false);
 var serial_chipkit = new SerialPort("/dev/ttyUSB0", {baudrate: 115200}, false);

@@ -9,7 +9,7 @@
     <meta name="author" content="">
     <link rel="icon" href="/static/favicon.ico">
 
-    <title>Off Canvas Template for Bootstrap</title>
+    <title>Spectrometre - projet long</title>
 
     <!-- Bootstrap core CSS -->
     <link href="/bootstrap/css/bootstrap.min.css" rel="stylesheet">
@@ -18,6 +18,8 @@
     <link href="/css/offcanvas.css" rel="stylesheet">
     <script language="javascript" type="text/javascript" src="jquery.js"></script>
   	<script language="javascript" type="text/javascript" src="jquery.flot.js"></script>
+  	<script language="javascript" type="text/javascript" src="jquery.flot.symbol.js"></script>
+  	<script language="javascript" type="text/javascript" src="jquery.flot.cursor.js"></script>
   	<script language="javascript" type="text/javascript" src="/socket.io/socket.io.js"></script>
 
 
@@ -59,14 +61,15 @@
     	</div>
 
       <div class="row">
-        <div class="col-md-8">
+        <div class="col-md-9">
           <div id="graphe" style="height:500px"></div>
           <hr>
           <input type="text" id="temp" value="2"/>
           <button id="acquisition" class="btn btn-primary">Acquisition</button>
           <button id="stop" class="btn btn-default">Stop</button>
 
-          <button id="save_figure" class="btn btn-primary pull-right">Save</button>
+          <button id="save_figure" class="btn btn-primary pull-right" >Save</button>
+          <button id="add_cursor" class="btn btn-primary pull-right" style="margin-right:10px">Add cursor</button>
 
         </div>
         <div class="col-md-3">
@@ -103,6 +106,8 @@
 var offset=0;
 var continuous=false;
 var lastData;
+
+
 $(document).ready(function() {
 	var socket;
 
@@ -110,24 +115,27 @@ $(document).ready(function() {
 
 	socket.on('newData', function (data) {
     lastData=data;
-		$.plot("#graphe", [{"color":"rgb(255,0,0)",lines:{ lineWidth: 0.5}, data:data}],
-		{yaxis: {
-    	min: 150,
-    	max: 560}});
+    draw_big_graph(data);
 	});
 
   socket.on("files", function(data){
-    var figure=$("<div style='height:200' id='"+data.name+"'></div>");
+    var figure=$("<div style='height:500' id='"+data.name+"'></div>");
     figure.css("height",200);
     var hr=$("<hr>");
     $("#save").prepend(hr);
     $("#save").prepend(figure);
-    var p=$("<p>"+data.name+"</p>");
+    var p_name=$("<p>"+data.name+"</p>");
+    var p=$("<p></p>");
+
+    $("#save").prepend(p_name);
     $("#save").prepend(p);
     var remove=$("<span class='glyphicon glyphicon-remove pull-right'></span>");
     var download=$("<span style='margin-right:10px;' class='glyphicon glyphicon-download-alt pull-right'></span>");
+    var visualize=$("<span style='margin-right:10px;' class='glyphicon glyphicon-eye-open pull-right'></span>");
+
     p.append(remove);
     p.append(download);
+    p.append(visualize);
 
     remove.click(function(){
       socket.emit("delete", data.name);
@@ -139,10 +147,26 @@ $(document).ready(function() {
       socket.emit("download", data.name);
     });
 
-    $.plot(figure, [{"color":"rgb(255,0,0)",lines:{ lineWidth: 0.5}, data:data.data}],
+    var data_string=data.data;
+    for(var i=0; i<data_string.length; i++){
+      data_string[i][0]=parseInt(data_string[i][0]);
+      data_string[i][1]=parseInt(data_string[i][1]);
+    }
+
+    visualize.click(function(){
+      socket.emit("stop");
+      draw_big_graph(data_string);
+    });
+
+    $.plot(figure, [{"color":"rgb(255,0,0)",lines:{ lineWidth: 0.5}, data:data_string}],
 		{yaxis: {
     	min: 150,
-    	max: 560}});
+    	max: 560},
+        });
+
+
+
+
   });
 
   socket.on("download_ok", function(data){
@@ -161,6 +185,22 @@ $(document).ready(function() {
     socket.emit("save", lastData);
 
   });
+  $("#add_cursor").click(function(){
+    global_graph.addCursor({
+        name: 'cursor'+global_graph.getCursors().length,
+        mode: 'xy',
+        color: 'blue',
+        showIntersections: true,
+        snapToPlot: 0,
+        symbol: 'cross',
+        showValuesRelativeToSeries: 0,
+        position: {
+            x: 200,
+            y: 200
+        },
+        fontSize:15
+    });
+  });
 
   $("#shutdown").click(function(){
     socket.emit("shutdown");
@@ -175,8 +215,23 @@ $(document).ready(function() {
     }
     setTimeout(function(){shutdown();}, 1000);
   }
+  var global_graph;
 
+  function draw_big_graph(data){
+		global_graph=$.plot("#graphe", [{"color":"rgb(255,0,0)",lines:{ lineWidth: 0.5}, data:data}],
+		{yaxis: {
+    	min: 150,
+    	max: 560},
+          grid: {
+              hoverable: true,
+              clickable: true,
+              autoHighlight: false
+          }});
+
+  }
 });
+
+
 
 
 </script>
