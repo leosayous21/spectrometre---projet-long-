@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="icon" href="/static/favicon.ico">
+
+    <title>Off Canvas Template for Bootstrap</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Custom styles for this template -->
+    <link href="/css/offcanvas.css" rel="stylesheet">
+    <script language="javascript" type="text/javascript" src="jquery.js"></script>
+  	<script language="javascript" type="text/javascript" src="jquery.flot.js"></script>
+  	<script language="javascript" type="text/javascript" src="/socket.io/socket.io.js"></script>
+
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+
+  <body>
+    <nav class="navbar navbar-fixed-top navbar-inverse">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="#">Spectro</a>
+        </div>
+        <div id="navbar" class="collapse navbar-collapse pull-right">
+          <ul class="nav navbar-nav">
+            <!--
+            <li class="active"><a href="#">Home</a></li>
+            <li><a href="#about">About</a></li>
+            <li><a href="#contact">Contact</a></li>
+          -->
+           <a class="btn btn-danger" id="shutdown" style="margin-top:10px;">Shutdown</a>
+          </ul>
+        </div><!-- /.nav-collapse -->
+      </div><!-- /.container -->
+    </nav><!-- /.navbar -->
+
+    <div class="container" style="margin-top:50px;">
+      <div id="header">
+    		<h2>Spectromètre</h2>
+    	</div>
+
+      <div class="row">
+        <div class="col-md-8">
+          <div id="graphe" style="height:500px"></div>
+          <hr>
+          <input type="text" id="temp" value="2"/>
+          <button id="acquisition" class="btn btn-primary">Acquisition</button>
+          <button id="stop" class="btn btn-default">Stop</button>
+
+          <button id="save_figure" class="btn btn-primary pull-right">Save</button>
+
+        </div>
+        <div class="col-md-3">
+          <div id="save" style="max-height:800; scollable:auto">
+          </div>
+        </div>
+
+
+      </div>
+      <hr>
+      <br/>
+      <footer>
+        <p>&copy; CentraleSupelec 2016 - projet long - Portier - Sayous</p>
+      </footer>
+
+    </div><!--/.container-->
+
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+
+    <script src="/bootstrap/js/bootstrap.min.js"></script>
+
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <script src="/bootstrap/ie10-viewport-bug-workaround.js"></script>
+
+    <script src="/js/offcanvas.js"></script>
+  </body>
+</html>
+
+<script type="text/javascript">
+
+var offset=0;
+var continuous=false;
+var lastData;
+$(document).ready(function() {
+	var socket;
+
+	socket = io.connect('http://'+window.location.host);
+
+	socket.on('newData', function (data) {
+    lastData=data;
+		$.plot("#graphe", [{"color":"rgb(255,0,0)",lines:{ lineWidth: 0.5}, data:data}],
+		{yaxis: {
+    	min: 150,
+    	max: 560}});
+	});
+
+  socket.on("files", function(data){
+    var figure=$("<div style='height:200' id='"+data.name+"'></div>");
+    figure.css("height",200);
+    var hr=$("<hr>");
+    $("#save").prepend(hr);
+    $("#save").prepend(figure);
+    var p=$("<p>"+data.name+"</p>");
+    $("#save").prepend(p);
+    var remove=$("<span class='glyphicon glyphicon-remove pull-right'></span>");
+    var download=$("<span style='margin-right:10px;' class='glyphicon glyphicon-download-alt pull-right'></span>");
+    p.append(remove);
+    p.append(download);
+
+    remove.click(function(){
+      socket.emit("delete", data.name);
+      figure.fadeOut();
+      p.fadeOut();
+      hr.fadeOut();
+    });
+    download.click(function(){
+      socket.emit("download", data.name);
+    });
+
+    $.plot(figure, [{"color":"rgb(255,0,0)",lines:{ lineWidth: 0.5}, data:data.data}],
+		{yaxis: {
+    	min: 150,
+    	max: 560}});
+  });
+
+  socket.on("download_ok", function(data){
+    document.location.href=data;
+  });
+
+  $("#acquisition").click(function(){
+    socket.emit("newAcquisition", $("#temp").val());
+  });
+
+  $("#stop").click(function(){
+    socket.emit("stop");
+  });
+
+  $("#save_figure").click(function(){
+    socket.emit("save", lastData);
+
+  });
+
+  $("#shutdown").click(function(){
+    socket.emit("shutdown");
+    shutdown();
+  });
+  var shutdown_timer=40;
+  function shutdown(){
+    if(shutdown_timer>0)
+    {
+      shutdown_timer-=1;
+      $("#shutdown").html("you can unplug in "+shutdown_timer+"s");
+    }
+    setTimeout(function(){shutdown();}, 1000);
+  }
+
+});
+
+
+</script>
